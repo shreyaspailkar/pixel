@@ -8,7 +8,7 @@
     <style>
         body {
             background-color: black;
-            color: black; /* Hidden by default */
+            color: black;
             font-family: 'Press Start 2P', monospace;
             display: flex;
             justify-content: center;
@@ -24,7 +24,7 @@
             transition: color 0.3s ease;
         }
         .active {
-            color: #00ff00; /* Neon Green when active */
+            color: #00ff00;
         }
     </style>
 </head>
@@ -32,45 +32,39 @@
 
     <div id="display" class="pixel-text">HELLO WORLD</div>
 
-    <script src="https://unpkg.com/piesocket-js@5"></script>
     <script>
-        // 1. Keep the iPhone screen from dimming/sleeping
+        // 1. Keep screen awake
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     await navigator.wakeLock.request('screen');
-                    console.log("Wake Lock active! Screen won't sleep.");
+                    console.log("Wake Lock active!");
                 }
-            } catch (err) {
-                console.warn("Wake lock failed. Requires user interaction first.");
-            }
+            } catch (err) { console.warn(err); }
         }
-        
-        // Trigger wake lock on the first screen tap
         document.addEventListener('click', requestWakeLock);
 
-        // 2. Connect to a free test WebSocket channel
-        // (Using PieSocket's public demo API key)
-        const pieSocket = new PieSocket.default({
-            clusterId: "demo",
-            apiKey: "oCdGGAwcounter6wu8g6v8eunvsc68wACmG40gnoas4oj7MDUjY" 
-        });
+        // 2. Connect to ntfy.sh public websocket pool
+        // Change "my-unique-pixel-display" to anything completely random if you want privacy!
+        const socket = new WebSocket('wss://ntfy.sh/my-unique-pixel-display/ws');
 
-        const channel = pieSocket.subscribe("iphone-pixel-display");
-
-        // 3. Listen for the API event
-        channel.on("notification", (data) => {
-            const displayEl = document.getElementById('display');
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
             
-            // Change text to the API payload, or default to Hello World
-            displayEl.innerText = data.text || "HELLO WORLD";
-            displayEl.classList.add('active');
+            // Only trigger if it is a valid message event
+            if (data.event === "message") {
+                const displayEl = document.getElementById('display');
+                
+                // Set text to whatever you sent via Postman
+                displayEl.innerText = data.message.toUpperCase();
+                displayEl.classList.add('active');
 
-            // Hide it again after 5 seconds (turn screen back to black)
-            setTimeout(() => {
-                displayEl.classList.remove('active');
-            }, 5000);
-        });
+                // Fade back to black after 5 seconds
+                setTimeout(() => {
+                    displayEl.classList.remove('active');
+                }, 5000);
+            }
+        };
     </script>
 </body>
 </html>
